@@ -1,101 +1,141 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Primordial — a living world</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='16' r='8' fill='%2346e0a8'/%3E%3Ccircle cx='22' cy='11' r='4' fill='%23eac36a'/%3E%3Ccircle cx='23' cy='21' r='3' fill='%23ff6b6b'/%3E%3C/svg%3E" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SUSPECT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0c'/%3E%3Ccircle cx='16' cy='13' r='7' fill='none' stroke='%23e8b667' stroke-width='2'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Oswald:wght@300;400;500;600&family=Cutive+Mono&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div id="app">
-    <!-- ░░ HEADER ░░ -->
-    <header id="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <span class="cell c1"></span><span class="cell c2"></span><span class="cell c3"></span>
-        </div>
-        <div class="brand-text">
-          <h1>PRIMORDIAL</h1>
-          <p>a living world · evolution in real time</p>
+  <!-- Cinematic layers, back to front -->
+  <canvas id="rain" aria-hidden="true"></canvas>
+  <div id="lamp" aria-hidden="true"></div>
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="grain" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+
+  <!-- ================= TITLE ================= -->
+  <section id="title" class="screen active">
+    <div class="title-wrap">
+      <h1 class="logo">SUSPECT</h1>
+      <p class="tagline">One room. One accusation. She knows something. Find out what.</p>
+
+      <div class="difficulty" role="radiogroup" aria-label="Difficulty">
+        <button class="diff" data-diff="nervous" role="radio" aria-checked="false">
+          <span class="diff-name">Nervous First-Timer</span>
+          <span class="diff-sub">Cracks easily. Obvious tells.</span>
+        </button>
+        <button class="diff selected" data-diff="cold" role="radio" aria-checked="true">
+          <span class="diff-name">Cold Professional</span>
+          <span class="diff-sub">Smooth. Subtle. Recovers fast.</span>
+        </button>
+        <button class="diff" data-diff="liar" role="radio" aria-checked="false">
+          <span class="diff-name">Pathological Liar</span>
+          <span class="diff-sub">Lies about everything. Misleading tells.</span>
+        </button>
+      </div>
+
+      <button id="new-case" class="primary big">NEW CASE</button>
+      <p id="title-status" class="micro"></p>
+    </div>
+  </section>
+
+  <!-- ================= BRIEF ================= -->
+  <section id="brief" class="screen">
+    <div class="brief-card">
+      <p class="file-label">CASE FILE</p>
+      <h2 id="brief-title">—</h2>
+      <p id="brief-logline" class="logline">—</p>
+      <div class="brief-grid">
+        <div><span class="k">SUSPECT</span><span id="brief-suspect">—</span></div>
+        <div><span class="k">RELATION</span><span id="brief-relation">—</span></div>
+        <div><span class="k">THE NIGHT</span><span id="brief-night">—</span></div>
+      </div>
+      <p id="brief-cloud" class="cloud">—</p>
+      <button id="enter-room" class="primary">ENTER THE ROOM</button>
+    </div>
+  </section>
+
+  <!-- ================= INTERROGATION ================= -->
+  <section id="room" class="screen">
+    <header class="hud">
+      <div class="hud-left">
+        <span class="case-chip" id="hud-case">—</span>
+      </div>
+      <div class="hud-center">
+        <div class="composure">
+          <div class="composure-track"><div id="composure-fill" class="composure-fill"></div></div>
+          <span class="composure-label">COMPOSURE <b id="composure-num">100</b></span>
         </div>
       </div>
-      <div class="readouts">
-        <div class="stat"><span class="k">time</span><span class="v" id="stat-time">0:00</span></div>
-        <div class="stat"><span class="k">creatures</span><span class="v" id="stat-pop">0</span></div>
-        <div class="stat"><span class="k">generation</span><span class="v" id="stat-gen">0</span></div>
-        <div class="stat"><span class="k">fps</span><span class="v" id="stat-fps">–</span></div>
+      <div class="hud-right">
+        <button id="mute" class="icon-btn" title="Mute / unmute" aria-label="Mute">♪</button>
+        <button id="accuse" class="danger" title="One accusation. Use it well.">ACCUSE</button>
       </div>
     </header>
 
-    <!-- ░░ LEFT: controls + charts ░░ -->
-    <aside id="left">
-      <section class="panel">
-        <h2 class="panel-title">Controls</h2>
-        <div class="transport">
-          <button id="btn-play" class="btn primary" title="Play / Pause (space)">
-            <span class="ico-pause">❚❚</span><span class="ico-play">▶</span>
-          </button>
-          <div class="speed">
-            <label for="speed">speed</label>
-            <input id="speed" type="range" min="1" max="10" step="1" value="2" />
-            <span id="speed-val" class="speed-val">2×</span>
+    <div class="room-body">
+      <div class="dialogue-col">
+        <div id="transcript" class="transcript" aria-live="polite"></div>
+        <form id="ask-form" class="ask" autocomplete="off">
+          <input id="ask-input" class="ask-input" type="text" maxlength="240"
+                 placeholder="Ask her something…" aria-label="Question" />
+          <button id="ask-send" class="primary" type="submit">ASK</button>
+        </form>
+      </div>
+
+      <aside class="case-col">
+        <div class="panel">
+          <div class="panel-head">
+            <span>STATEMENT LOG</span>
+            <span class="hint" id="confront-hint">pin two to confront</span>
           </div>
+          <div id="statements" class="cards"></div>
         </div>
-        <div class="god">
-          <div class="god-label">God mode</div>
-          <div class="god-buttons">
-            <button id="btn-meteor" class="btn god meteor" title="Kill ~70% of all life">☄ Meteor</button>
-            <button id="btn-famine" class="btn god famine" title="Halve the food supply">✷ Famine</button>
-            <button id="btn-abundance" class="btn god abundance" title="Double the food supply">✿ Abundance</button>
-          </div>
-          <button id="btn-reset" class="btn ghost" title="Reseed a fresh world">↻ New world</button>
+        <div class="panel">
+          <div class="panel-head"><span>EVIDENCE</span></div>
+          <div id="evidence" class="cards"></div>
         </div>
-      </section>
+        <button id="confront" class="confront-btn" disabled>CONFRONT ✕ 0</button>
+      </aside>
+    </div>
+  </section>
 
-      <section class="panel">
-        <h2 class="panel-title">Population by species</h2>
-        <canvas id="chart-pop" class="chart"></canvas>
-        <div class="legend">
-          <span><i class="dot grazer"></i>grazers</span>
-          <span><i class="dot omnivore"></i>omnivores</span>
-          <span><i class="dot hunter"></i>hunters</span>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2 class="panel-title">Average traits over generations</h2>
-        <canvas id="chart-traits" class="chart"></canvas>
-        <div class="legend small" id="trait-legend"></div>
-      </section>
-    </aside>
-
-    <!-- ░░ CENTER: the world ░░ -->
-    <main id="stage">
-      <canvas id="world"></canvas>
-      <div id="toasts"></div>
-      <div id="banner" class="banner hidden"></div>
-    </main>
-
-    <!-- ░░ RIGHT: field notes + inspector ░░ -->
-    <aside id="right">
-      <section class="panel notes-panel">
-        <h2 class="panel-title">
-          Field Notes
-          <span id="narrator-badge" class="badge">connecting…</span>
-        </h2>
-        <div id="field-notes" class="field-notes"></div>
-      </section>
-
-      <section class="panel inspector-panel">
-        <h2 class="panel-title">Specimen</h2>
-        <div id="inspector" class="inspector empty">
-          <p class="hint">Click any creature to read its genome and lineage.</p>
-        </div>
-      </section>
-    </aside>
+  <!-- ================= ACCUSE MODAL ================= -->
+  <div id="accuse-modal" class="modal">
+    <div class="modal-card">
+      <h3>ONE ACCUSATION</h3>
+      <p>You get this once. Charge her with the crime, or let her walk?</p>
+      <div class="modal-actions">
+        <button id="accuse-guilty" class="danger">SHE'S GUILTY</button>
+        <button id="accuse-innocent" class="ghost">LET HER WALK</button>
+      </div>
+      <button id="accuse-cancel" class="text-btn">keep asking</button>
+    </div>
   </div>
+
+  <!-- ================= REVEAL ================= -->
+  <section id="reveal" class="screen">
+    <div class="reveal-wrap">
+      <div id="verdict-banner" class="verdict-banner">—</div>
+      <p id="verdict-sub" class="verdict-sub">—</p>
+      <div class="reveal-cols">
+        <div class="reveal-col">
+          <h4>THE INTERROGATION</h4>
+          <div id="reveal-transcript" class="reveal-transcript"></div>
+        </div>
+        <div class="reveal-col">
+          <h4>THE TRUTH FILE <span class="legend"><i class="sw-lie"></i>lie <i class="sw-truth"></i>truth</span></h4>
+          <div id="reveal-truth" class="reveal-truth"></div>
+        </div>
+      </div>
+      <button id="again" class="primary big">NEW CASE</button>
+    </div>
+  </section>
 
   <script type="module" src="./src/main.js"></script>
 </body>

@@ -1,12 +1,12 @@
 {
-  "name": "primordial",
+  "name": "suspect",
   "version": "1.0.0",
-  "description": "Primordial — a browser-based artificial life simulator narrated live by Claude Fable 5.",
+  "description": "SUSPECT — a noir interrogation game where Claude Fable 5 plays a suspect hiding the truth, and you have to break them.",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "tune": "node tools/tune.js",
-    "headless": "node tools/headless-check.js"
+    "playtest": "node tools/playtest.mjs",
+    "selftest": "node tools/selftest.mjs"
   },
   "license": "MIT"
 }

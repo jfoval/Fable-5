@@ -1,43 +1,54 @@
-# Primordial — Demo Kit
+# DEMO
 
-## 30-second screen-recording script
+## 40-second recording script
 
-A tight, dramatic 30 seconds. Have the app open at **http://localhost:5173** with
-`ANTHROPIC_API_KEY` set so Field Notes is live. Reseed with **↻ New world** right
-before you hit record so you start at a clean founding population.
+Screen recording, no narration. Let the room do the talking. Mute off — the rain and the
+heartbeat are part of it.
 
-| Time | Action | What the viewer sees |
-| --- | --- | --- |
-| **0:00–0:04** | Start paused on a fresh world, then press **Space**. | The title "PRIMORDIAL", a dark arena filling with ~220 glowing teal cells. Clean, alive, museum-like. |
-| **0:04–0:08** | Drag **Speed to 6×**. | Grazers boom — the green band in the "Population by species" chart shoots up. A `Population boom` toast slides in. |
-| **0:08–0:13** | **Click one creature.** | The Specimen panel opens: genome bars, energy, generation, lineage. Its vision halo glows on the canvas. |
-| **0:13–0:18** | Do nothing — let it run. Point at the **Field Notes** panel. | Fable 5 posts a live observation naming the real trend ("the small fast grazers are outbreeding their larger cousins"). Amber omnivore band starts rising in the chart. |
-| **0:18–0:22** | **Fire ☄ Meteor** at the population peak. | Screen flashes "☄ Meteor impact", ~70% of life vanishes instantly, a red crash toast appears. |
-| **0:22–0:27** | Watch the recovery. | Survivors reproduce; the population chart V's back up. A `Population boom` toast returns. Trait lines visibly bend — the bottleneck reshaped the gene pool. |
-| **0:27–0:30** | Let the last frame breathe on the charts + Field Notes. | Trait-divergence / predator-prey toast lands; Fable 5's narration ties it together. Fade out on the title. |
+**0:00–0:05 — The room.**
+Open on the title: rain on black, the desk lamp glowing amber, **SUSPECT** in worn type.
+Click **Cold Professional**, then **NEW CASE**. Hold a beat on the case file that slides
+up — *The Last Reel*, a dead cinema owner, his old partner in the chair.
 
-**Director's notes**
-- If you want guaranteed predators on camera, let the run reach ~2–3 sim-minutes
-  first (speed 8–10×) — a red "hunter" band emerges in the chart and coral-colored
-  cells start chasing others.
-- **✿ Abundance** right after the meteor makes the rebound explosive and
-  photogenic.
-- Record at 1600×950+ so all three columns (charts / arena / Field Notes) are
-  visible at once.
+**0:05–0:13 — First contact.**
+Hit **ENTER THE ROOM**. The suspect resolves out of the dark — a silhouette under the
+lamp. Type: *"Where were you at nine?"* Let her answer type out:
+*"I left right after the crowd. Nine, give or take."* — and catch the tell underneath:
+*smooths a nonexistent wrinkle from her sleeve.*
+
+**0:13–0:22 — The seam.**
+Type: *"Did you go up to the booth?"* She denies it — *her hands go very still on the
+table.* Now show the case column: her claim **"Nine, give or take"** is already a card in
+the statement log. Pin it. Pin the **keycard log — side exit, 9:51 PM**. Hit **CONFRONT**.
+
+**0:22–0:30 — It lands.**
+The verdict drops: *Her own keycard puts her at 9:51 — the "left by nine" story is dead.*
+The composure bar craters into red, the heartbeat picks up, the silhouette flinches and
+drags a hand down its face. She scrambles: *"Alright — I stayed."*
+
+**0:30–0:36 — Break her.**
+One more contradiction — the booth denial against the usher's statement. Composure hits
+zero. She cracks: *"He was going to sell it… the canister was just there, in my hand."*
+
+**0:36–0:40 — The proof.**
+Hit **ACCUSE → SHE'S GUILTY**. Cut to **CASE CLOSED** and the reveal: your transcript on
+the left, the locked truth file on the right — every lie she told glowing red, every truth
+green. Hold there. That's the shot: she was hiding a consistent story the whole time, and
+you can see the exact seams.
 
 ---
 
-## Three candidate LinkedIn hook lines
+## LinkedIn hook lines
 
-1. **"I gave 300 digital cells a genome and a neural net, walked away, and came
-   back to predators. Nobody coded the hunting — evolution did. Watch it happen live,
-   narrated by Claude."**
+1. I built a detective game where the suspect is an LLM with a secret it's not supposed to
+   tell you. Then I put the answer sheet on screen at the end so you can watch every lie it
+   held onto. It doesn't slip.
 
-2. **"No sprites, no scripted AI, no rules for 'how to survive.' Just energy,
-   mutation, and selection — and within five minutes you get boom-and-bust cycles and
-   proto-species splitting apart in real time. Here's Primordial."**
+2. Most "AI characters" forget who they are by the third message. So I made a game that
+   only works if the character *doesn't* — a suspect locked to a hidden truth file, lying
+   only where the story forces it, for the whole interrogation. The reveal screen is the
+   receipt.
 
-3. **"Most 'AI life' demos are puppets. This one isn't: every creature's behavior
-   comes from an evolving neural network reading what it actually sees, and Claude
-   Fable 5 narrates the emergent drama like a naturalist. Fire the meteor and watch
-   who makes it."**
+3. Chatbots agree with you. This one lies to your face, gets rattled when you catch it, and
+   mocks you when you're wrong. Turns out the interesting thing to build wasn't a helpful
+   assistant — it was an unhelpful one with something to hide.

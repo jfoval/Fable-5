@@ -1,124 +1,92 @@
-# Primordial
+# SUSPECT
 
-**A browser-based artificial-life simulator where digital creatures evolve in real time — narrated live by Claude Fable 5.**
+A noir interrogation game. Claude Fable 5 plays a suspect with something to hide.
+You get one room, a stack of evidence, and exactly one accusation. Break them — or
+let the wrong person walk.
 
-Hundreds of procedurally-drawn cells drift across a dark arena, eating regrowing
-plant food, hunting each other, reproducing, and dying. Every creature carries a
-**genome** (speed, size, vision, metabolism, aggression, diet) and a tiny
-**neural network** that reads what it can actually see and decides where to go.
-Nothing is scripted. Genomes mutate on reproduction, selection does the rest, and
-within a few minutes you watch grazers boom and bust, predators evolve out of the
-herd, and traits split into distinct forms.
+Every case is generated fresh and locked behind a hidden **truth file**: the real
+crime, the hour-by-hour timeline, whether this suspect actually did it, what they're
+hiding either way, the evidence, and the seams a sharp detective can pull. The suspect
+lies only where the truth forces them to and improvises consistently everywhere else.
+When the case ends you see the whole truth file next to your transcript — every lie in
+red, every truth in green. That screen is the proof the AI held a hidden, consistent
+state the entire time.
 
-A side panel — **Field Notes** — sends a compact world-state summary to
-Claude Fable 5 every ~20 seconds and narrates what's happening in the voice of a
-fascinated naturalist, referencing the *real* trends in the data.
-
----
+![Interrogation](https://img.shields.io/badge/scene-noir-e8b667) ![Model](https://img.shields.io/badge/model-claude--fable--5-c33b34)
 
 ## Run it
-
-```bash
-npm start
-```
-
-Then open **http://localhost:5173**. That's the whole thing — zero dependencies,
-no build step, vanilla JS + one small Node server.
-
-### Enable the narrator (optional)
-
-The narrator uses the Anthropic API. Provide a key and the "Field Notes" panel
-comes alive:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-... npm start
 ```
 
-Without a key the badge reads **"Narrator offline"** and the simulation runs
-exactly as normal — the key never leaves the server (the browser calls a local
-`/api/narrate` proxy, never the Anthropic API directly).
+Then open **http://localhost:5173**. That's the whole install — zero dependencies,
+just Node 18+.
 
-> Requires Node 18+ (uses the built-in `fetch`). No `npm install` needed.
+No key? It still runs. The game falls back to one hand-authored case (*The Last Reel*)
+with a scripted suspect, so the full loop — interrogate, confront, break, reveal — demos
+end to end. Set the key to get freshly generated suspects instead.
 
----
+## How to play
 
-## What to do
+1. **Pick a difficulty and hit NEW CASE.** The truth file is generated once and never
+   touched again.
+2. **Read the file, enter the room.** Type questions. She answers in character, with a
+   physical *tell* under each line — a tapped table, eyes that won't meet yours. The
+   tells get louder as her **composure** drops.
+3. **Work the statement log.** Every factual claim she makes becomes a pinnable card.
+   Pin two of them — or a claim against a piece of evidence — and hit **CONFRONT**.
+   An adjudicator rules on whether it's a real contradiction. Land it and her composure
+   craters and she scrambles to revise. Miss and she mocks you and steadies.
+4. **Break her or call it.** At zero composure she cracks — a full confession if guilty,
+   or she blurts the real secret if she's innocent. Or spend your one **ACCUSE**: charge
+   the guilty and you win; charge the innocent and they lawyer up.
+5. **Watch the reveal.** Transcript on the left, the locked truth on the right, every
+   lie and truth color-coded.
 
-| Control | Effect |
-| --- | --- |
-| **▶ / ❚❚** (or `Space`) | Play / pause |
-| **Speed 1×–10×** | Run 1–10 simulation steps per frame |
-| **Click a creature** | Inspect its genome, vitals, and lineage |
-| **☄ Meteor** | Cataclysm — kills ~70% of all life at random |
-| **✷ Famine** | Halves standing food and slows regrowth |
-| **✿ Abundance** | Floods the world with food |
-| **↻ New world** | Reseed a fresh founding population |
+### Difficulty
 
-Watch the two charts on the left: **Population by species** (grazers / omnivores /
-hunters as a stacked area) and **Average traits over generations**. Fire a meteor
-during a population peak and watch which lineages survive the bottleneck.
+| Mode | Lies | Tells | Composure |
+|------|------|-------|-----------|
+| **Nervous First-Timer** | clumsy, over-explained | obvious from the start | cracks fast |
+| **Cold Professional** | smooth, minimal | subtle — a pause, a too-steady voice | recovers well |
+| **Pathological Liar** | reflexive, even about trivia | misleading on purpose | slippery |
 
----
+## What's under the hood
 
-## How it works
+- **`server.js`** — zero-dependency Node server. Serves the static front end and proxies
+  three endpoints so the API key never touches the browser: `/api/case`,
+  `/api/reply`, `/api/confront`. With no key, every endpoint transparently returns the
+  bundled scripted case.
+- **`lib/prompts.js`** — the three prompt surfaces (case architect, suspect roleplay,
+  contradiction adjudicator) and the difficulty tuning. Shared verbatim between the live
+  server and the test harness, so what ships is exactly what's tested.
+- **`lib/anthropic.js`** — thin Messages-API client plus a resilient JSON extractor.
+- **`public/`** — vanilla JS. Canvas rain (`rain.js`), a fully procedural suspect
+  silhouette whose idle animation decays as composure falls (`silhouette.js`),
+  synthesized rain + heartbeat audio (`audio.js`), typewriter dialogue, film grain, and
+  the game state machine (`main.js`). No framework, no build step.
 
-- **World & creatures** — a 1600×1000 arena with plant-food pellets that regrow to
-  a carrying-capacity cap. Each creature senses the nearest food, the nearest thing
-  it could hunt, and the nearest thing that could hunt it.
-- **Brains** — an 11→8→4 feed-forward net whose weights live in the genome. It
-  outputs four steering gains (seek food, pursue prey, flee, wander). The net is
-  seeded with a sensible prior so gen-0 isn't dead on arrival, then **evolves**.
-- **Energy economy** — movement, size, vision, and metabolism all cost energy;
-  plants feed grazers, meat feeds hunters, and each digests the other poorly. The
-  constants are tuned so **both grazing and hunting strategies are viable**, which
-  is what produces predator–prey cycles.
-- **Selection** — reproduce when energy crosses a threshold (halving it into a
-  mutated child); die from starvation, old age, or predation.
-- **Performance** — a uniform spatial-hash grid keeps neighbour queries near-O(1).
-  Measured cost at ~370 creatures is ~2.3 ms/frame (update + render), i.e. well
-  above 60 fps with 300+ creatures.
-- **Emergence detection** — the world is sampled every 2.5 s to track population by
-  cluster and trait distributions, and to flag booms, crashes, extinctions,
-  predator–prey cycles, and trait divergence (proto-speciation). Those events drive
-  both the on-screen ticker and the narrator's context.
-
-### Project layout
-
-```
-server.js              zero-dependency static server + /api/narrate proxy
-public/
-  index.html           app shell
-  styles.css           design system (dark, "museum" UI)
-  src/
-    config.js          all the tuned ecology constants
-    genome.js          traits + brain weights, mutation
-    brain.js           the tiny neural network
-    creature.js        sense → think → steer → eat/hunt → reproduce → die
-    spatial.js         uniform spatial-hash grid
-    world.js           tick loop, food economy, god-mode events
-    emergence.js       clustering, trait tracking, event detection
-    render.js          procedural creature rendering (cached sprites)
-    charts.js          population + trait charts
-    narrator.js        Field Notes panel (Claude Fable 5)
-    ui.js              inspector, toasts, banner
-    main.js            wiring + animation loop
-tools/
-  tune.js              headless run: prints trajectory, drift, events, verdict
-  shot.mjs / perf.mjs  headless browser smoke + performance checks
-```
-
-### Verify evolution yourself (headless, no browser)
+## Testing
 
 ```bash
-npm run tune          # runs 5 sim-minutes and prints a VERDICT
+npm run selftest    # deterministic, no key — JSON plumbing, truth-file schema,
+                    # offline interrogation arc, confront hit/miss, crack
+
+ANTHROPIC_API_KEY=sk-... npm run playtest    # 3 full interrogations vs the real model
 ```
 
-Typical verdict: **survived: YES · trait drift: YES · boom & bust: YES ·
-predators arose: YES** — measurable trait shifts and at least one boom/bust cycle,
-every run.
+The live playtest simulates a detective across three generated cases and verifies the
+things that matter: every suspect reply is strict JSON, the suspect never volunteers the
+secret before cracking, confronting a *seeded* inconsistency scores as a hit while a
+bogus pairing misses, and an average case resolves in **8–15 questions**.
 
----
+## Config
+
+- `ANTHROPIC_API_KEY` — enables generated cases and the live model. Absent → bundled case.
+- `PORT` — defaults to `5173`.
+- Model is `claude-fable-5`.
 
 ## License
 
-MIT
+MIT.
