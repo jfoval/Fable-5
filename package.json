@@ -1,0 +1,12 @@
+{
+  "name": "primordial",
+  "version": "1.0.0",
+  "description": "Primordial — a browser-based artificial life simulator narrated live by Claude Fable 5.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "tune": "node tools/tune.js",
+    "headless": "node tools/headless-check.js"
+  },
+  "license": "MIT"
+}
