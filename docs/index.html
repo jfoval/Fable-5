@@ -177,7 +177,7 @@
   </div>
   <button class="btn" id="start-btn">🎆 &nbsp;LIGHT UP THE SKY</button>
   <div class="rotate-tip">🔄 Turn your phone sideways — the show is way better in widescreen</div>
-  <p class="fine">Free & open · works on phone or desktop · sound on for the full show</p>
+  <p class="fine">Free & open · works on phone or desktop · sound on for the full show · v4</p>
 </div>
 
 <div class="screen" id="end-screen">
@@ -339,31 +339,81 @@ water.rotation.x = -Math.PI / 2;
 water.position.set(0, 0, -40);
 scene.add(water);
 
-// city skyline with lit windows (canvas texture)
-function windowTexture(w, h) {
+// city skyline: floor-aligned lit windows, setback towers, antennas with
+// blinking beacons, rooftop water towers, and a waterfront quay
+const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff2233 });
+function windowTexture(cols, floors) {
   const c = document.createElement('canvas');
-  c.width = w * 6; c.height = h * 6;
+  c.width = cols * 8; c.height = floors * 8;
   const x = c.getContext('2d');
-  x.fillStyle = '#070a20'; x.fillRect(0, 0, c.width, c.height);
-  x.fillStyle = '#ffd88a';
-  for (let i = 1; i < w; i++) for (let j = 1; j < h; j++)
-    if (Math.random() < .28) x.fillRect(i * 6, j * 6, 3, 4);
+  x.fillStyle = '#0a0e26'; x.fillRect(0, 0, c.width, c.height);
+  for (let f = 0; f < floors; f++) {
+    const floorLit = Math.random() < .8;          // some floors fully dark
+    for (let w = 0; w < cols; w++) {
+      if (!floorLit || Math.random() > .45) continue;
+      x.fillStyle = Math.random() < .72
+        ? `rgba(255,214,140,${.55 + Math.random() * .45})`   // warm office
+        : `rgba(200,220,255,${.5 + Math.random() * .4})`;    // cool fluorescent
+      x.fillRect(w * 8 + 2, f * 8 + 2, 4, 5);
+    }
+  }
   const t = new THREE.CanvasTexture(c);
   t.magFilter = THREE.NearestFilter;
   return t;
 }
+function buildingMat(cols, floors) {
+  const tex = windowTexture(cols, floors);
+  return new THREE.MeshStandardMaterial({
+    color: 0x11162e, map: tex, emissive: 0xffffff, emissiveMap: tex,
+    emissiveIntensity: .8, roughness: .9
+  });
+}
 {
   const city = new THREE.Group();
-  for (let x = -170; x < 170; x += 8 + Math.random() * 10) {
+  for (let x = -170; x < 170; x += 9 + Math.random() * 9) {
     const bw = 7 + Math.random() * 9;
-    const bh = 12 + Math.random() * 30;
-    const tex = windowTexture(Math.round(bw), Math.round(bh));
-    const b = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, bh, 8),
-      new THREE.MeshStandardMaterial({ color: 0x0d1130, map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .65, roughness: .9 })
-    );
-    b.position.set(x, bh / 2, -110 - Math.random() * 25);
+    const bh = 14 + Math.random() * 30;
+    const bz = -110 - Math.random() * 25;
+    const cols = Math.round(bw / 1.8), floors = Math.round(bh / 2.2);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 8), buildingMat(cols, floors));
+    b.position.set(x, bh / 2, bz);
     city.add(b);
+    let roofY = bh, roofW = bw;
+    if (bh > 28 && Math.random() < .45) {          // setback upper tier
+      const tw = bw * .62, th = bh * .38;
+      const tier = new THREE.Mesh(new THREE.BoxGeometry(tw, th, 5.5),
+        buildingMat(Math.round(tw / 1.8), Math.round(th / 2.2)));
+      tier.position.set(x, bh + th / 2, bz);
+      city.add(tier);
+      roofY = bh + th; roofW = tw;
+    }
+    if (roofY > 30 && Math.random() < .5) {        // antenna + blinking beacon
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(.12, .2, 6, 5),
+        new THREE.MeshBasicMaterial({ color: 0x2a3054 }));
+      mast.position.set(x, roofY + 3, bz);
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(.45, 8, 8), beaconMat);
+      beacon.position.set(x, roofY + 6.2, bz);
+      city.add(mast, beacon);
+    } else if (Math.random() < .3) {               // rooftop water tower
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 8),
+        new THREE.MeshStandardMaterial({ color: 0x1a2142, roughness: .9 }));
+      tank.position.set(x + roofW * .25, roofY + 1.1, bz);
+      const lid = new THREE.Mesh(new THREE.ConeGeometry(1.25, 1, 8),
+        new THREE.MeshStandardMaterial({ color: 0x151b38, roughness: .9 }));
+      lid.position.set(x + roofW * .25, roofY + 2.7, bz);
+      city.add(tank, lid);
+    }
+  }
+  // waterfront quay in front of the towers, strung with dock lights
+  const quay = new THREE.Mesh(new THREE.BoxGeometry(360, 2, 4),
+    new THREE.MeshStandardMaterial({ color: 0x0c1130, roughness: .95 }));
+  quay.position.set(0, 1, -97);
+  city.add(quay);
+  const dockLightMat = new THREE.MeshBasicMaterial({ color: 0xffc978 });
+  for (let x = -175; x <= 175; x += 7) {
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.28, 6, 6), dockLightMat);
+    bulb.position.set(x, 2.4, -95.5);
+    city.add(bulb);
   }
   // a Washington-Monument-style obelisk, softly lit
   const ob = new THREE.Mesh(
@@ -464,15 +514,28 @@ const BARGES = [-26, 0, 26].map(x => {
     rim.position.set(.6 + i * 1.25 + Math.sin(i * .14) * .75, 2.35 + Math.cos(i * .14) * .75, 0);
     boat.add(rim);
   }
+  // white hull stripe at the waterline so the hull reads as a boat
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(7.9, .28, 3.35),
+    new THREE.MeshStandardMaterial({ color: 0xd9dcef, emissive: 0x8a90b8, emissiveIntensity: .35 }));
+  stripe.position.y = .55;
+  boat.add(stripe);
+  // festive bulb string along the near deck edge
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffd88a });
+  for (let bx = -3.4; bx <= 3.8; bx += .9) {
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 6), bulbMat);
+    bulb.position.set(bx, 1.85, 1.55);
+    boat.add(bulb);
+  }
   // nav lights: red port, green starboard
   const port = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff4455 }));
   port.position.set(-4, 1.9, 0);
   const star = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshBasicMaterial({ color: 0x37e07a }));
   star.position.set(4.35, 1.1, 0);
   boat.add(port, star);
+  boat.scale.setScalar(1.3);
   boat.position.set(x, .1, -18);
   scene.add(boat);
-  return new THREE.Vector3(x + .6, 3.2, -18);   // rockets leave from the tubes
+  return new THREE.Vector3(x + .78, 4.2, -18);   // rockets leave from the tubes
 });
 
 /* ---------- audio (all synthesized, no assets) ---------- */
@@ -672,6 +735,19 @@ const STAR_MAT = new THREE.MeshStandardMaterial({
   color: 0xffd24a, emissive: 0xdd9a10, emissiveIntensity: .9, metalness: .6, roughness: .3
 });
 
+// pick spawn spots away from live targets so blasts can't farm clusters
+function spreadPos(y) {
+  let best = null, bestD = -1;
+  for (let k = 0; k < 8; k++) {
+    const p = new THREE.Vector3((Math.random() - .5) * 95, y, -45 - Math.random() * 35);
+    let d = Infinity;   // horizontal spacing only — balloons rise through all heights
+    for (const t of targets) d = Math.min(d, Math.hypot(t.mesh.position.x - p.x, t.mesh.position.z - p.z));
+    if (d > 18) return p;
+    if (d > bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
 const STAR_GLOW = new THREE.SpriteMaterial({
   map: makeGlowTexture(255, 210, 90), blending: THREE.AdditiveBlending,
   depthWrite: false, transparent: true, opacity: .5
@@ -682,7 +758,7 @@ function spawnStar() {
   const glow = new THREE.Sprite(STAR_GLOW);
   glow.scale.setScalar(7);
   m.add(glow);
-  m.position.set((Math.random()-.5) * 95, 18 + Math.random() * 34, -45 - Math.random() * 35);
+  m.position.copy(spreadPos(18 + Math.random() * 34));
   targets.push({ kind: 'star', mesh: m, r: 4.5, vx: (Math.random()-.5) * 3.2, phase: Math.random() * 9, points: POINTS.star });
   scene.add(m);
 }
@@ -712,7 +788,7 @@ function spawnBalloon() {
     new THREE.MeshBasicMaterial({ color: 0x9aa2c8 })
   );
   g.add(str);
-  g.position.set((Math.random()-.5) * 100, 2, -45 - Math.random() * 35);
+  g.position.copy(spreadPos(2));
   targets.push({ kind: 'balloon', mesh: g, r: 4, vy: 3.4 + Math.random() * 2.2, vx: (Math.random()-.5) * 2.5, phase: Math.random() * 9, points: POINTS.balloon });
   scene.add(g);
 }
@@ -734,11 +810,26 @@ new THREE.GLTFLoader().load('./Parrot.glb', gltf => {
     zmin = Math.min(zmin, z); zmax = Math.max(zmax, z);
     xmax = Math.max(xmax, Math.abs(pos.getX(i)));
   }
+  // eagles have a short broad tail fan, not a macaw streamer: compress the
+  // tail third of the model (and its animation deltas) toward the body
+  const zcut = zmin + (zmax - zmin) * .34, squash = .38, fan = 1.35;
+  const tailVert = [];
+  for (let i = 0; i < pos.count; i++) {
+    if (pos.getZ(i) < zcut) {
+      tailVert[i] = true;
+      pos.setZ(i, zcut + (pos.getZ(i) - zcut) * squash);
+      pos.setX(i, pos.getX(i) * fan);
+    }
+  }
+  for (const morph of g.morphAttributes.position)
+    for (let i = 0; i < morph.count; i++)
+      if (tailVert[i]) { morph.setZ(i, morph.getZ(i) * squash); morph.setX(i, morph.getX(i) * fan); }
+  zmin = zcut + (zmin - zcut) * squash;
   const BODY = [.24, .15, .07], DARK = [.13, .08, .04], WHITE = [.98, .97, .94], BEAK = [1, .72, .15];
   for (let i = 0; i < pos.count; i++) {
     const t = (pos.getZ(i) - zmin) / (zmax - zmin);
     const xr = Math.abs(pos.getX(i)) / xmax;
-    const c = t > .93 ? BEAK : t > .80 ? WHITE : t < .12 ? WHITE : (xr > .72 ? DARK : BODY);
+    const c = t > .93 ? BEAK : t > .80 ? WHITE : t < .17 ? WHITE : (xr > .72 ? DARK : BODY);
     col.setXYZ(i, c[0], c[1], c[2]);
   }
   mesh.material = new THREE.MeshStandardMaterial({
@@ -746,7 +837,7 @@ new THREE.GLTFLoader().load('./Parrot.glb', gltf => {
     roughness: .85, metalness: 0, emissive: 0x33220f, emissiveIntensity: .5
   });
   const inner = gltf.scene;
-  inner.scale.setScalar(.115);
+  inner.scale.setScalar(.13);
   const wrap = new THREE.Group();
   wrap.add(inner);
   const mixer = new THREE.AnimationMixer(inner);
@@ -910,9 +1001,8 @@ function resolveBlast(p) {
     removeTarget(t);
   });
   if (hits.length > 1) {
-    const mult = Math.min(hits.length, 3);
-    gained *= mult;
-    popup(p, `COMBO ×${mult}!`, '#7ec8ff', 30);
+    gained *= 2;
+    popup(p, 'COMBO ×2!', '#7ec8ff', 30);
   }
   setScore(score + gained);
 }
@@ -971,6 +1061,8 @@ function animate(now) {
   // decay flashes
   flashes.forEach(f => f.intensity = Math.max(0, f.intensity - dt * 9));
   STAR_GLOW.opacity = .42 + Math.sin(camT * 3.2) * .16;   // twinkle
+  const bk = .2 + .8 * Math.max(0, Math.sin(camT * 1.9)); // beacon blink
+  beaconMat.color.setRGB(bk, bk * .12, bk * .16);
 
   // particles
   for (let i = rockets.length - 1; i >= 0; i--) if (!rockets[i].update(dt)) rockets.splice(i, 1);
