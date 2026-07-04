@@ -123,6 +123,14 @@
     font-size: 15px; padding: 12px 26px; margin-top: 14px;
   }
   .fine { margin-top: 22px; font-size: 12px; opacity: .55; letter-spacing: .05em; }
+  .rotate-tip {
+    display: none; margin-top: 18px; font-size: 13px; font-weight: 700;
+    padding: 10px 18px; border-radius: 999px; color: var(--gold);
+    background: rgba(255,210,74,.1); border: 1px solid rgba(255,210,74,.45);
+    animation: tipPulse 1.6s ease-in-out infinite alternate;
+  }
+  @keyframes tipPulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+  @media (orientation: portrait) and (pointer: coarse) { .rotate-tip { display: inline-block; } }
 
   #end-screen { display: none; }
   #final-score {
@@ -168,6 +176,7 @@
     <div><span>🦅</span>Eagle · 76!</div>
   </div>
   <button class="btn" id="start-btn">🎆 &nbsp;LIGHT UP THE SKY</button>
+  <div class="rotate-tip">🔄 Turn your phone sideways — the show is way better in widescreen</div>
   <p class="fine">Free & open · works on phone or desktop · sound on for the full show</p>
 </div>
 
@@ -211,6 +220,25 @@ scene.fog = new THREE.Fog(0x05071c, 120, 320);
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, .1, 500);
 camera.position.set(0, 14, 46);
 camera.lookAt(0, 26, -60);
+function fitCamera() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.fov = camera.aspect < .9 ? 68 : 55;   // widen in portrait so the harbor still fits
+  camera.updateProjectionMatrix();
+}
+fitCamera();
+
+// soft radial glow sprite texture, shared by moon halo and star targets
+function makeGlowTexture(r, g, b) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const grad = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+  grad.addColorStop(0, `rgba(${r},${g},${b},.9)`);
+  grad.addColorStop(.4, `rgba(${r},${g},${b},.28)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  x.fillStyle = grad; x.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
 
 scene.add(new THREE.AmbientLight(0x223055, 1.1));
 const moonLight = new THREE.DirectionalLight(0x8fa8ff, .55);
@@ -246,20 +274,66 @@ function flash(pos, color, power = 3.2) {
   })));
 }
 
-// moon
+// moon with craters + halo, and its reflection streak on the water
 {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f3efdc'; x.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 14; i++) {
+    const r = 4 + Math.random() * 11;
+    x.beginPath();
+    x.arc(12 + Math.random() * 104, 12 + Math.random() * 104, r, 0, 7);
+    x.fillStyle = `rgba(160,152,120,${.14 + Math.random() * .18})`;
+    x.fill();
+    x.beginPath();
+    x.arc(12, 12, r, 0, 7); // keep texture busy at the pole seam too
+    x.fillStyle = 'rgba(0,0,0,0)'; x.fill();
+  }
+  const shade = x.createRadialGradient(46, 46, 20, 64, 64, 90);
+  shade.addColorStop(0, 'rgba(255,255,255,0)');
+  shade.addColorStop(1, 'rgba(90,84,60,.45)');
+  x.fillStyle = shade; x.fillRect(0, 0, 128, 128);
   const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(9, 24, 24),
-    new THREE.MeshBasicMaterial({ color: 0xf3f0dc, fog: false })
+    new THREE.SphereGeometry(9, 32, 32),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), fog: false })
   );
   moon.position.set(-95, 95, -220);
+  moon.rotation.y = 1.2;
   scene.add(moon);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeGlowTexture(240, 236, 210), blending: THREE.AdditiveBlending,
+    depthWrite: false, transparent: true, opacity: .55, fog: false
+  }));
+  halo.position.copy(moon.position);
+  halo.scale.setScalar(46);
+  scene.add(halo);
+  // moonglade: soft light streak stretching across the water toward the viewer
+  const gc = document.createElement('canvas');
+  gc.width = 32; gc.height = 128;
+  const gx = gc.getContext('2d');
+  const gg = gx.createLinearGradient(0, 0, 0, 128);
+  gg.addColorStop(0, 'rgba(210,220,255,.5)');
+  gg.addColorStop(1, 'rgba(210,220,255,0)');
+  gx.fillStyle = gg;
+  gx.fillRect(0, 0, 32, 128);
+  const glade = new THREE.Mesh(
+    new THREE.PlaneGeometry(16, 150),
+    new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(gc), blending: THREE.AdditiveBlending,
+      depthWrite: false, transparent: true, opacity: .22
+    })
+  );
+  glade.rotation.x = -Math.PI / 2;
+  glade.rotation.z = .12;
+  glade.position.set(-78, .06, -95);
+  scene.add(glade);
 }
 
 // water
 const water = new THREE.Mesh(
   new THREE.PlaneGeometry(600, 300),
-  new THREE.MeshStandardMaterial({ color: 0x0a1440, roughness: .45, metalness: .65 })
+  new THREE.MeshStandardMaterial({ color: 0x0a1440, roughness: .55, metalness: .6 })
 );
 water.rotation.x = -Math.PI / 2;
 water.position.set(0, 0, -40);
@@ -309,14 +383,25 @@ function windowTexture(w, h) {
 let flagGeo;
 {
   const c = document.createElement('canvas');
-  c.width = 190; c.height = 100;
+  c.width = 380; c.height = 200;
   const x = c.getContext('2d');
-  for (let i = 0; i < 13; i++) { x.fillStyle = i % 2 ? '#fff' : '#B31942'; x.fillRect(0, i * (100/13), 190, 100/13 + 1); }
-  x.fillStyle = '#0A3161'; x.fillRect(0, 0, 76, 100 * 7/13);
-  x.fillStyle = '#fff'; x.font = '7px sans-serif';
-  for (let r = 0; r < 9; r++) for (let s = 0; s < (r % 2 ? 5 : 6); s++)
-    x.fillText('★', 4 + s * 12 + (r % 2 ? 6 : 0), 9 + r * 5.6);
+  for (let i = 0; i < 13; i++) { x.fillStyle = i % 2 ? '#fff' : '#B31942'; x.fillRect(0, i * (200/13), 380, 200/13 + 1); }
+  const cantonW = 152, cantonH = 200 * 7 / 13;
+  x.fillStyle = '#0A3161'; x.fillRect(0, 0, cantonW, cantonH);
+  const drawStar = (cx, cy, r) => {
+    x.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const rad = i % 2 ? r * .42 : r, a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      x[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+    }
+    x.closePath(); x.fill();
+  };
+  x.fillStyle = '#fff';
+  for (let r = 0; r < 9; r++)
+    for (let s = 0; s < (r % 2 ? 5 : 6); s++)
+      drawStar(12.5 + s * 25.5 + (r % 2 ? 12.75 : 0), 11.5 + r * 10.75, 5.4);
   const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 4;
   flagGeo = new THREE.PlaneGeometry(13, 6.8, 24, 8);
   const flag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({
     map: tex, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .25
@@ -333,19 +418,61 @@ let flagGeo;
   scene.add(flag, pole, orb);
 }
 
-// barges the rockets launch from
+// launch boats: hull with raked bow, lit cabin, three mortar tubes, nav lights
 const BARGES = [-26, 0, 26].map(x => {
-  const b = new THREE.Mesh(
-    new THREE.BoxGeometry(7, 1.6, 3.2),
-    new THREE.MeshStandardMaterial({ color: 0x141a3d, roughness: .8 })
+  const boat = new THREE.Group();
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0x1c2450, roughness: .55, metalness: .25 });
+  const hullShape = new THREE.Shape();
+  hullShape.moveTo(-4.2, 0); hullShape.lineTo(-3.4, 1.5); hullShape.lineTo(3.4, 1.5);
+  hullShape.lineTo(4.4, .4); hullShape.lineTo(3.8, 0); hullShape.closePath();
+  const hull = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(hullShape, { depth: 3, bevelEnabled: true, bevelSize: .25, bevelThickness: .3, bevelSegments: 2 }),
+    hullMat
   );
-  b.position.set(x, .8, -18);
-  scene.add(b);
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(.35, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff5566 }));
-  lamp.position.set(x + 2.8, 1.9, -18);
-  scene.add(lamp);
-  return b.position.clone().setY(1.8);
+  hull.position.z = -1.5;
+  boat.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(7.4, .18, 3),
+    new THREE.MeshStandardMaterial({ color: 0x2a3364, roughness: .8 }));
+  deck.position.y = 1.62;
+  boat.add(deck);
+  // cabin with warm lit windows
+  const wc = document.createElement('canvas');
+  wc.width = 32; wc.height = 16;
+  const wx = wc.getContext('2d');
+  wx.fillStyle = '#10163a'; wx.fillRect(0, 0, 32, 16);
+  wx.fillStyle = '#ffd88a'; wx.fillRect(4, 5, 7, 6); wx.fillRect(14, 5, 7, 6); wx.fillRect(24, 5, 5, 6);
+  const cabinTex = new THREE.CanvasTexture(wc);
+  cabinTex.magFilter = THREE.NearestFilter;
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.3, 2),
+    new THREE.MeshStandardMaterial({ color: 0x232c5e, map: cabinTex, emissive: 0xffffff, emissiveMap: cabinTex, emissiveIntensity: .7, roughness: .85 }));
+  cabin.position.set(-2.6, 2.35, 0);
+  boat.add(cabin);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.4, .15, 2.3),
+    new THREE.MeshStandardMaterial({ color: 0x151b44 }));
+  roof.position.set(-2.6, 3.06, 0);
+  boat.add(roof);
+  // three angled mortar tubes with glowing rims
+  for (let i = -1; i <= 1; i++) {
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(.3, .36, 1.5, 10),
+      new THREE.MeshStandardMaterial({ color: 0x39415f, roughness: .4, metalness: .7 }));
+    tube.position.set(.6 + i * 1.25, 2.35, 0);
+    tube.rotation.z = -i * .14;
+    boat.add(tube);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.3, .06, 6, 14),
+      new THREE.MeshBasicMaterial({ color: 0xffb037 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.set(.6 + i * 1.25 + Math.sin(i * .14) * .75, 2.35 + Math.cos(i * .14) * .75, 0);
+    boat.add(rim);
+  }
+  // nav lights: red port, green starboard
+  const port = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff4455 }));
+  port.position.set(-4, 1.9, 0);
+  const star = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshBasicMaterial({ color: 0x37e07a }));
+  star.position.set(4.35, 1.1, 0);
+  boat.add(port, star);
+  boat.position.set(x, .1, -18);
+  scene.add(boat);
+  return new THREE.Vector3(x + .6, 3.2, -18);   // rockets leave from the tubes
 });
 
 /* ---------- audio (all synthesized, no assets) ---------- */
@@ -522,7 +649,7 @@ function explode(pos, big = false) {
   const palette = PALETTES[(Math.random() * PALETTES.length) | 0];
   const willow = Math.random() < .22;
   explosions.push(new Explosion(pos, willow ? PALETTES[3] : palette, big ? 260 : 150, big ? 22 : 15, willow));
-  flash(pos, palette[0], big ? 5 : 3);
+  flash(pos, palette[0], big ? 4 : 2.4);
   sBoom(big);
 }
 
@@ -545,9 +672,16 @@ const STAR_MAT = new THREE.MeshStandardMaterial({
   color: 0xffd24a, emissive: 0xdd9a10, emissiveIntensity: .9, metalness: .6, roughness: .3
 });
 
+const STAR_GLOW = new THREE.SpriteMaterial({
+  map: makeGlowTexture(255, 210, 90), blending: THREE.AdditiveBlending,
+  depthWrite: false, transparent: true, opacity: .5
+});
 function spawnStar() {
   const m = new THREE.Mesh(STAR_GEO, STAR_MAT);
   m.scale.setScalar(1.35);
+  const glow = new THREE.Sprite(STAR_GLOW);
+  glow.scale.setScalar(7);
+  m.add(glow);
   m.position.set((Math.random()-.5) * 95, 18 + Math.random() * 34, -45 - Math.random() * 35);
   targets.push({ kind: 'star', mesh: m, r: 4.5, vx: (Math.random()-.5) * 3.2, phase: Math.random() * 9, points: POINTS.star });
   scene.add(m);
@@ -558,15 +692,26 @@ function spawnBalloon() {
   const g = new THREE.Group();
   const color = BALLOON_COLORS[(Math.random() * 3) | 0];
   const b = new THREE.Mesh(
-    new THREE.SphereGeometry(1.9, 14, 14),
-    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .28, roughness: .35 })
+    new THREE.SphereGeometry(1.9, 20, 20),
+    new THREE.MeshPhongMaterial({
+      color, emissive: color, emissiveIntensity: .22,
+      shininess: 90, specular: 0xbbccff, transparent: true, opacity: .95
+    })
   );
   b.scale.y = 1.18; g.add(b);
+  const knot = new THREE.Mesh(new THREE.ConeGeometry(.3, .5, 8),
+    new THREE.MeshPhongMaterial({ color, shininess: 60 }));
+  knot.position.y = -2.35; knot.rotation.x = Math.PI;
+  g.add(knot);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -2.6, 0), new THREE.Vector3(.35, -3.6, .1),
+    new THREE.Vector3(-.2, -4.7, 0), new THREE.Vector3(.15, -5.8, -.1),
+  ]);
   const str = new THREE.Mesh(
-    new THREE.CylinderGeometry(.035, .035, 4, 4),
-    new THREE.MeshBasicMaterial({ color: 0x8890b8 })
+    new THREE.TubeGeometry(curve, 12, .04, 4),
+    new THREE.MeshBasicMaterial({ color: 0x9aa2c8 })
   );
-  str.position.y = -4; g.add(str);
+  g.add(str);
   g.position.set((Math.random()-.5) * 100, 2, -45 - Math.random() * 35);
   targets.push({ kind: 'balloon', mesh: g, r: 4, vy: 3.4 + Math.random() * 2.2, vx: (Math.random()-.5) * 2.5, phase: Math.random() * 9, points: POINTS.balloon });
   scene.add(g);
@@ -788,8 +933,7 @@ $('mute').addEventListener('click', () => {
   $('mute').textContent = muted ? '🔇' : '🔊';
 });
 window.addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
+  fitCamera();
   renderer.setSize(innerWidth, innerHeight);
 });
 
@@ -826,6 +970,7 @@ function animate(now) {
 
   // decay flashes
   flashes.forEach(f => f.intensity = Math.max(0, f.intensity - dt * 9));
+  STAR_GLOW.opacity = .42 + Math.sin(camT * 3.2) * .16;   // twinkle
 
   // particles
   for (let i = rockets.length - 1; i >= 0; i--) if (!rockets[i].update(dt)) rockets.splice(i, 1);
