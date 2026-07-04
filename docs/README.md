@@ -26,3 +26,7 @@ Or run locally: `python3 -m http.server -d docs` and open http://localhost:8000.
 - Best score is stored in `localStorage`.
 
 MIT license. Happy Fourth! 🇺🇸
+
+## Credits
+
+- Bird model: `Parrot.glb` from the [three.js examples](https://github.com/mrdoob/three.js) (by mirada, from ro.me), repainted in-engine as a bald eagle.

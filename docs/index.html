@@ -163,8 +163,8 @@
     runs out. You get <b>76 seconds</b>. Can you score <b>250</b>?
   </p>
   <div class="legend">
-    <div><span>⭐</span>Gold Star · 25</div>
-    <div><span>🎈</span>Balloon · 10</div>
+    <div><span>⭐</span>Gold Star · 20</div>
+    <div><span>🎈</span>Balloon · 5</div>
     <div><span>🦅</span>Eagle · 76!</div>
   </div>
   <button class="btn" id="start-btn">🎆 &nbsp;LIGHT UP THE SKY</button>
@@ -182,6 +182,7 @@
 </div>
 
 <script src="./three.min.js"></script>
+<script src="./GLTFLoader.js"></script>
 <script>
 (() => {
 'use strict';
@@ -194,7 +195,8 @@
 const ROUND_SECONDS = +new URLSearchParams(location.search).get('t') || 76;  // 17-76 ✊
 const TARGET_SCORE  = 250;         // 250 years
 const BLAST_RADIUS  = 9;
-const POINTS = { star: 25, balloon: 10, eagle: 76 };
+const LAUNCH_COOLDOWN = .4;        // seconds between rockets
+const POINTS = { star: 20, balloon: 5, eagle: 76 };
 
 /* ---------- renderer / scene ---------- */
 const canvas   = document.getElementById('game');
@@ -570,36 +572,52 @@ function spawnBalloon() {
   scene.add(g);
 }
 
-let eagle = null, eagleTimer = 8;
+let eagle = null, eagleTimer = 11, eagleAsset = null;
+
+// real animated bird (three.js example model, vendored) repainted as a bald
+// eagle: brown body, white head + tail, yellow beak
+new THREE.GLTFLoader().load('./Parrot.glb', gltf => {
+  let mesh = null;
+  gltf.scene.traverse(o => { if (o.isMesh) mesh = o; });
+  const g = mesh.geometry, pos = g.attributes.position;
+  const col = new THREE.Float32BufferAttribute(pos.count * 3, 3);
+  g.setAttribute('color', col);
+  // base-pose bounds only (computeBoundingBox unions morph targets)
+  let zmin = Infinity, zmax = -Infinity, xmax = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i);
+    zmin = Math.min(zmin, z); zmax = Math.max(zmax, z);
+    xmax = Math.max(xmax, Math.abs(pos.getX(i)));
+  }
+  const BODY = [.24, .15, .07], DARK = [.13, .08, .04], WHITE = [.98, .97, .94], BEAK = [1, .72, .15];
+  for (let i = 0; i < pos.count; i++) {
+    const t = (pos.getZ(i) - zmin) / (zmax - zmin);
+    const xr = Math.abs(pos.getX(i)) / xmax;
+    const c = t > .93 ? BEAK : t > .80 ? WHITE : t < .12 ? WHITE : (xr > .72 ? DARK : BODY);
+    col.setXYZ(i, c[0], c[1], c[2]);
+  }
+  mesh.material = new THREE.MeshStandardMaterial({
+    vertexColors: true, flatShading: true, morphTargets: true,
+    roughness: .85, metalness: 0, emissive: 0x33220f, emissiveIntensity: .5
+  });
+  const inner = gltf.scene;
+  inner.scale.setScalar(.115);
+  const wrap = new THREE.Group();
+  wrap.add(inner);
+  const mixer = new THREE.AnimationMixer(inner);
+  mixer.clipAction(gltf.animations[0]).play();
+  eagleAsset = { wrap, inner, mixer };
+});
+
 function spawnEagle() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.ConeGeometry(1.15, 5.4, 8),
-    new THREE.MeshStandardMaterial({ color: 0x8a5a2c, emissive: 0x5b3a1e, emissiveIntensity: .55, roughness: .8 })
-  );
-  body.rotation.z = -Math.PI / 2; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.95, 10, 10),
-    new THREE.MeshStandardMaterial({ color: 0xf4f6ff, emissive: 0xf4f6ff, emissiveIntensity: .25 }));
-  head.position.x = 2.9; g.add(head);
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(.32, 1, 6),
-    new THREE.MeshStandardMaterial({ color: 0xffb52e, emissive: 0xffb52e, emissiveIntensity: .4 }));
-  beak.rotation.z = -Math.PI / 2; beak.position.x = 3.9; g.add(beak);
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0x9a6a34, emissive: 0x6b4423, emissiveIntensity: .55, roughness: .85, side: THREE.DoubleSide });
-  const wl = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.1), wingMat);
-  const wr = wl.clone();
-  wl.position.set(-.4, .5, -2.2); wl.rotation.x = .5;
-  wr.position.set(-.4, .5,  2.2); wr.rotation.x = -.5;
-  g.add(wl, wr);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(.8, 2, 6),
-    new THREE.MeshStandardMaterial({ color: 0xf4f6ff }));
-  tail.rotation.z = Math.PI / 2; tail.position.x = -3.1; g.add(tail);
+  if (!eagleAsset) { eagleTimer = 2; return; }   // model still loading
   const dir = Math.random() < .5 ? 1 : -1;
-  g.position.set(-dir * 75, 30 + Math.random() * 18, -58);
-  g.scale.setScalar(1.6);
-  if (dir < 0) g.rotation.y = Math.PI;
-  eagle = { kind: 'eagle', mesh: g, r: 6.5, dir, wl, wr, t: 0, points: POINTS.eagle };
+  const { wrap, inner } = eagleAsset;
+  inner.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;   // model faces +z
+  wrap.position.set(-dir * 75, 30 + Math.random() * 18, -58);
+  eagle = { kind: 'eagle', mesh: wrap, r: 6.5, dir, t: 0, points: POINTS.eagle };
   targets.push(eagle);
-  scene.add(g);
+  scene.add(wrap);
   if (state === 'playing') banner('🦅 THE EAGLE! Hit it for 76!');
 }
 
@@ -607,7 +625,7 @@ function removeTarget(t) {
   const i = targets.indexOf(t);
   if (i >= 0) targets.splice(i, 1);
   scene.remove(t.mesh);
-  if (t === eagle) { eagle = null; eagleTimer = 12 + Math.random() * 8; }
+  if (t === eagle) { eagle = null; eagleTimer = 18 + Math.random() * 10; }
 }
 
 /* ---------- HUD & popups ---------- */
@@ -657,12 +675,12 @@ function setScore(v) {
 function startGame() {
   // clear leftovers
   targets.slice().forEach(removeTarget);
-  eagle = null; eagleTimer = 6;
+  eagle = null; eagleTimer = 11;
   setScore(0); hit250 = false;
   timeLeft = ROUND_SECONDS;
   spawnStarT = 0; spawnBalloonT = 0;
-  for (let i = 0; i < 4; i++) spawnStar();
-  for (let i = 0; i < 3; i++) spawnBalloon();
+  for (let i = 0; i < 3; i++) spawnStar();
+  for (let i = 0; i < 2; i++) spawnBalloon();
   $('title-screen').style.display = 'none';
   $('end-screen').style.display = 'none';
   $('hud').style.display = 'flex';
@@ -674,10 +692,10 @@ function startGame() {
 }
 
 const RANKS = [
-  [100,  'Sparkler Rookie 🎇'],
+  [120,  'Sparkler Rookie 🎇'],
   [250,  'Backyard Patriot 🇺🇸'],
-  [450,  'Grand Finale Hero 🎆'],
-  [700,  'Liberty Legend 🗽'],
+  [400,  'The 250 Club — Grand Finale Hero 🎆'],
+  [600,  'Liberty Legend 🗽'],
   [1e9,  '1776 ELITE — Founding Firework Father 🦅'],
 ];
 function endGame() {
@@ -700,7 +718,11 @@ const raycaster = new THREE.Raycaster();
 const skyPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 62);   // plane z = -62
 const ndc = new THREE.Vector2();
 
+let lastLaunch = -9;
 function launchAt(clientX, clientY) {
+  const now = performance.now() / 1000;
+  if (now - lastLaunch < LAUNCH_COOLDOWN) return;
+  lastLaunch = now;
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hit = new THREE.Vector3();
@@ -712,10 +734,16 @@ function launchAt(clientX, clientY) {
   let bestD = Infinity, aimed = null;
   for (const t of targets) {
     const d = raycaster.ray.distanceToPoint(t.mesh.position);
-    if (d < t.r + 2.5 && d < bestD) { bestD = d; aimed = t; }
+    const capture = t.kind === 'eagle' ? t.r + 4 : t.r + 2.5;
+    if (d < capture && d < bestD) { bestD = d; aimed = t; }
   }
   if (aimed) hit.copy(aimed.mesh.position);
   const from = BARGES.reduce((a, b) => Math.abs(a.x - hit.x) < Math.abs(b.x - hit.x) ? a : b);
+  // lead the eagle: it keeps flying while the rocket is in the air
+  if (aimed && aimed.kind === 'eagle') {
+    const dur = .55 + from.distanceTo(hit) / 90;
+    hit.x += aimed.dir * 14 * dur;
+  }
   sLaunch();
   rockets.push(new Rocket(from, hit, p => {
     explode(p);
@@ -737,8 +765,9 @@ function resolveBlast(p) {
     removeTarget(t);
   });
   if (hits.length > 1) {
-    gained *= hits.length;
-    popup(p, `COMBO ×${hits.length}!`, '#7ec8ff', 30);
+    const mult = Math.min(hits.length, 3);
+    gained *= mult;
+    popup(p, `COMBO ×${mult}!`, '#7ec8ff', 30);
   }
   setScore(score + gained);
 }
@@ -819,8 +848,7 @@ function animate(now) {
       t.t += dt;
       m.position.x += t.dir * 14 * dt;
       m.position.y += Math.sin(t.t * 2.2) * dt * 5;
-      t.wl.rotation.x =  .5 + Math.sin(t.t * 9) * .55;
-      t.wr.rotation.x = -.5 - Math.sin(t.t * 9) * .55;
+      eagleAsset.mixer.update(dt);
       if (Math.abs(m.position.x) > 85) removeTarget(t);
     }
   }
@@ -836,8 +864,8 @@ function animate(now) {
     spawnStarT -= dt; spawnBalloonT -= dt; eagleTimer -= dt;
     const stars = targets.filter(t => t.kind === 'star').length;
     const balloons = targets.filter(t => t.kind === 'balloon').length;
-    if (spawnStarT <= 0 && stars < 4) { spawnStar(); spawnStarT = 2.3; }
-    if (spawnBalloonT <= 0 && balloons < 3) { spawnBalloon(); spawnBalloonT = 3; }
+    if (spawnStarT <= 0 && stars < 3) { spawnStar(); spawnStarT = 4; }
+    if (spawnBalloonT <= 0 && balloons < 2) { spawnBalloon(); spawnBalloonT = 5; }
     if (!eagle && eagleTimer <= 0) spawnEagle();
   } else {
     // attract-mode / finale ambient fireworks
