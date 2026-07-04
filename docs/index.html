@@ -46,6 +46,17 @@
   .hud-label { font-size: 10px; letter-spacing: .2em; opacity: .7; text-transform: uppercase; }
   .hud-value { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
   #timer.low .hud-value { color: var(--red); animation: pulse .5s infinite alternate; }
+  .goal-track {
+    height: 5px; border-radius: 3px; margin-top: 5px;
+    background: rgba(255,255,255,.12); overflow: hidden;
+  }
+  .goal-fill {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--red), var(--gold));
+    transition: width .3s ease;
+  }
+  .goal-label { font-size: 9px; letter-spacing: .18em; opacity: .6; margin-top: 3px; font-weight: 700; }
+  .goal-label.done { opacity: 1; color: var(--gold); }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.15); } }
 
   #mute {
@@ -156,7 +167,11 @@
 <canvas id="game"></canvas>
 
 <div id="hud">
-  <div class="hud-box"><div class="hud-label">Score</div><div class="hud-value" id="score">0</div></div>
+  <div class="hud-box">
+    <div class="hud-label">Score</div><div class="hud-value" id="score">0</div>
+    <div class="goal-track"><div class="goal-fill" id="goal-fill"></div></div>
+    <div class="goal-label" id="goal-label">GOAL 250</div>
+  </div>
   <div class="hud-box" id="timer"><div class="hud-label">Seconds</div><div class="hud-value" id="time">76</div></div>
 </div>
 <button id="mute" title="Sound on/off">🔊</button>
@@ -171,13 +186,13 @@
     runs out. You get <b>76 seconds</b>. Can you score <b>250</b>?
   </p>
   <div class="legend">
-    <div><span>⭐</span>Gold Star · 20</div>
+    <div><span>⭐</span>Gold Star · 15</div>
     <div><span>🎈</span>Balloon · 5</div>
     <div><span>🦅</span>Eagle · 76!</div>
   </div>
   <button class="btn" id="start-btn">🎆 &nbsp;LIGHT UP THE SKY</button>
   <div class="rotate-tip">🔄 Turn your phone sideways — the show is way better in widescreen</div>
-  <p class="fine">Free & open · works on phone or desktop · sound on for the full show · v4</p>
+  <p class="fine">Free & open · works on phone or desktop · sound on for the full show · v5</p>
 </div>
 
 <div class="screen" id="end-screen">
@@ -205,7 +220,7 @@ const ROUND_SECONDS = +new URLSearchParams(location.search).get('t') || 76;  // 
 const TARGET_SCORE  = 250;         // 250 years
 const BLAST_RADIUS  = 9;
 const LAUNCH_COOLDOWN = .4;        // seconds between rockets
-const POINTS = { star: 20, balloon: 5, eagle: 76 };
+const POINTS = { star: 15, balloon: 5, eagle: 76 };
 
 /* ---------- renderer / scene ---------- */
 const canvas   = document.getElementById('game');
@@ -257,6 +272,25 @@ function flash(pos, color, power = 3.2) {
 }
 
 /* ---------- environment ---------- */
+
+// night-sky gradient backdrop with a dusky glow at the horizon
+{
+  const c = document.createElement('canvas');
+  c.width = 2; c.height = 256;
+  const x = c.getContext('2d');
+  const grad = x.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#04051a');
+  grad.addColorStop(.55, '#0a0e30');
+  grad.addColorStop(.82, '#1c1848');
+  grad.addColorStop(1, '#3a2350');
+  x.fillStyle = grad; x.fillRect(0, 0, 2, 256);
+  const backdrop = new THREE.Mesh(
+    new THREE.PlaneGeometry(800, 260),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), fog: false, depthWrite: false })
+  );
+  backdrop.position.set(0, 110, -150);
+  scene.add(backdrop);
+}
 
 // starry sky
 {
@@ -342,6 +376,7 @@ scene.add(water);
 // city skyline: floor-aligned lit windows, setback towers, antennas with
 // blinking beacons, rooftop water towers, and a waterfront quay
 const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff2233 });
+let ferrisWheel = null;
 function windowTexture(cols, floors) {
   const c = document.createElement('canvas');
   c.width = cols * 8; c.height = floors * 8;
@@ -414,6 +449,37 @@ function buildingMat(cols, floors) {
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(.28, 6, 6), dockLightMat);
     bulb.position.set(x, 2.4, -95.5);
     city.add(bulb);
+  }
+  // waterfront ferris wheel, slowly turning with red/white/blue/gold bulbs
+  {
+    const wheel = new THREE.Group();
+    const steel = new THREE.MeshStandardMaterial({ color: 0x232b58, roughness: .7, metalness: .5 });
+    const R = 15;
+    wheel.add(new THREE.Mesh(new THREE.TorusGeometry(R, .35, 8, 40), steel));
+    for (let i = 0; i < 8; i++) {
+      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, R * 2, 5), steel);
+      spoke.rotation.z = i * Math.PI / 8;
+      wheel.add(spoke);
+    }
+    wheel.add(new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0xfff1c0 })));
+    const bulbColors = [0xff3348, 0xf4f6ff, 0x4a6fff, 0xffd24a];
+    for (let i = 0; i < 20; i++) {
+      const a = i / 20 * Math.PI * 2;
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(.55, 6, 6),
+        new THREE.MeshBasicMaterial({ color: bulbColors[i % 4] }));
+      bulb.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
+      wheel.add(bulb);
+    }
+    wheel.position.set(96, R + 3.5, -99);
+    ferrisWheel = wheel;
+    city.add(wheel);
+    for (const lx of [-6, 6]) {   // A-frame legs
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(.4, .55, R + 4, 6), steel);
+      leg.position.set(96 + lx, (R + 4) / 2, -99);
+      leg.rotation.z = lx > 0 ? -.32 : .32;
+      city.add(leg);
+    }
   }
   // a Washington-Monument-style obelisk, softly lit
   const ob = new THREE.Mesh(
@@ -672,6 +738,9 @@ class Rocket {
       new THREE.SphereGeometry(.42, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xffe9b0 })
     );
+    const headGlow = new THREE.Sprite(ROCKET_GLOW);
+    headGlow.scale.setScalar(4.5);
+    this.head.add(headGlow);
     this.head.position.copy(from);
     scene.add(this.head);
     // sparkle trail
@@ -708,11 +777,26 @@ class Rocket {
   }
 }
 
+// short-lived expanding core flash at each burst
+const coreFlashes = [];
+const CORE_TEX = makeGlowTexture(255, 245, 220);
+const ROCKET_GLOW = new THREE.SpriteMaterial({
+  map: CORE_TEX, color: 0xffcf7a, blending: THREE.AdditiveBlending,
+  depthWrite: false, transparent: true, opacity: .85
+});
 function explode(pos, big = false) {
   const palette = PALETTES[(Math.random() * PALETTES.length) | 0];
   const willow = Math.random() < .22;
   explosions.push(new Explosion(pos, willow ? PALETTES[3] : palette, big ? 260 : 150, big ? 22 : 15, willow));
   flash(pos, palette[0], big ? 4 : 2.4);
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: CORE_TEX, color: palette[0], blending: THREE.AdditiveBlending,
+    depthWrite: false, transparent: true, opacity: 1
+  }));
+  core.position.copy(pos);
+  core.scale.setScalar(3);
+  scene.add(core);
+  coreFlashes.push({ sprite: core, life: 0, max: .32, size: big ? 30 : 20 });
   sBoom(big);
 }
 
@@ -890,13 +974,16 @@ function banner(text) {
 /* ---------- game state ---------- */
 let state = 'title';                   // title | playing | ended
 let score = 0, timeLeft = ROUND_SECONDS;
-let hit250 = false, finaleT = 0, attractT = 0;
+let hit250 = false, finaleT = 0, attractT = 0, finaleRushShown = false;
 let spawnStarT = 0, spawnBalloonT = 0;
 const best = () => +(localStorage.getItem('sss-best') || 0);
 
 function setScore(v) {
   score = v;
   scoreEl.textContent = v;
+  $('goal-fill').style.width = Math.min(100, v / TARGET_SCORE * 100) + '%';
+  if (v >= TARGET_SCORE) { $('goal-label').textContent = '★ 250 REACHED ★'; $('goal-label').classList.add('done'); }
+  else { $('goal-label').textContent = 'GOAL 250'; $('goal-label').classList.remove('done'); }
   if (!hit250 && v >= TARGET_SCORE) {
     hit250 = true;
     banner('★ 250 YEARS! ★');
@@ -912,6 +999,7 @@ function startGame() {
   // clear leftovers
   targets.slice().forEach(removeTarget);
   eagle = null; eagleTimer = 11;
+  streak = 0; finaleRushShown = false;
   setScore(0); hit250 = false;
   timeLeft = ROUND_SECONDS;
   spawnStarT = 0; spawnBalloonT = 0;
@@ -928,10 +1016,11 @@ function startGame() {
 }
 
 const RANKS = [
-  [120,  'Sparkler Rookie 🎇'],
-  [250,  'Backyard Patriot 🇺🇸'],
-  [400,  'The 250 Club — Grand Finale Hero 🎆'],
-  [600,  'Liberty Legend 🗽'],
+  [100,  'Sparkler Rookie 🎇'],
+  [180,  'Backyard Patriot 🇺🇸'],
+  [250,  'Torch Bearer — so close! 🔥'],
+  [350,  'The 250 Club — Grand Finale Hero 🎆'],
+  [500,  'Liberty Legend 🗽'],
   [1e9,  '1776 ELITE — Founding Firework Father 🦅'],
 ];
 function endGame() {
@@ -987,10 +1076,16 @@ function launchAt(clientX, clientY) {
   }));
 }
 
+let streak = 0;
 function resolveBlast(p) {
   const hits = targets.filter(t => t.mesh.position.distanceTo(p) < BLAST_RADIUS + t.r);
-  if (!hits.length) return;
+  if (!hits.length) { streak = 0; return; }
   let gained = 0;
+  streak++;
+  if (streak > 0 && streak % 5 === 0) {   // 5 hitting rockets in a row, no misses
+    gained += 20;
+    popup(p, '🔥 ON FIRE +20', '#ff9d3c', 26);
+  }
   hits.forEach((t, i) => {
     gained += t.points;
     sPop(t.kind === 'eagle' ? 440 : 700 + i * 120);
@@ -1000,9 +1095,10 @@ function resolveBlast(p) {
     if (t.kind === 'eagle') banner('🦅 FREEDOM! +76');
     removeTarget(t);
   });
-  if (hits.length > 1) {
-    gained *= 2;
-    popup(p, 'COMBO ×2!', '#7ec8ff', 30);
+  if (hits.length > 1) {   // flat bonus — never multiplies the eagle
+    const bonus = (hits.length - 1) * 15;
+    gained += bonus;
+    popup(p, `COMBO +${bonus}!`, '#7ec8ff', 28);
   }
   setScore(score + gained);
 }
@@ -1067,6 +1163,19 @@ function animate(now) {
   // particles
   for (let i = rockets.length - 1; i >= 0; i--) if (!rockets[i].update(dt)) rockets.splice(i, 1);
   for (let i = explosions.length - 1; i >= 0; i--) if (!explosions[i].update(dt)) explosions.splice(i, 1);
+  for (let i = coreFlashes.length - 1; i >= 0; i--) {
+    const f = coreFlashes[i];
+    f.life += dt;
+    const k = Math.min(f.life / f.max, 1);
+    f.sprite.scale.setScalar(3 + (f.size - 3) * k);
+    f.sprite.material.opacity = 1 - k;
+    if (k >= 1) {
+      scene.remove(f.sprite);
+      f.sprite.material.dispose();
+      coreFlashes.splice(i, 1);
+    }
+  }
+  if (ferrisWheel) ferrisWheel.rotation.z += dt * .18;
 
   // targets drift
   for (const t of targets) {
@@ -1101,8 +1210,11 @@ function animate(now) {
     spawnStarT -= dt; spawnBalloonT -= dt; eagleTimer -= dt;
     const stars = targets.filter(t => t.kind === 'star').length;
     const balloons = targets.filter(t => t.kind === 'balloon').length;
-    if (spawnStarT <= 0 && stars < 3) { spawnStar(); spawnStarT = 4; }
-    if (spawnBalloonT <= 0 && balloons < 2) { spawnBalloon(); spawnBalloonT = 5; }
+    // grand finale rush: the last 12 seconds go dense and fast
+    const rush = timeLeft <= 12;
+    if (rush && !finaleRushShown) { finaleRushShown = true; banner('🎆 GRAND FINALE RUSH!'); }
+    if (spawnStarT <= 0 && stars < (rush ? 4 : 3)) { spawnStar(); spawnStarT = rush ? 2.2 : 4.5; }
+    if (spawnBalloonT <= 0 && balloons < (rush ? 3 : 2)) { spawnBalloon(); spawnBalloonT = rush ? 3 : 5; }
     if (!eagle && eagleTimer <= 0) spawnEagle();
   } else {
     // attract-mode / finale ambient fireworks
