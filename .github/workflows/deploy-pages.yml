@@ -2,7 +2,7 @@ name: Deploy game to GitHub Pages
 
 on:
   push:
-    branches: [claude/july-4th-game-v3ci1m, main, master]
+    branches: [claude/july-4th-game-v3ci1m, claude/primordial-life-simulator-og11kr, main, master]
     paths: [docs/**, .github/workflows/deploy-pages.yml]
   workflow_dispatch:
 
