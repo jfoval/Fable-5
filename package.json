@@ -1,12 +1,12 @@
 {
-  "name": "primordial",
+  "name": "bluff",
   "version": "1.0.0",
-  "description": "Primordial — a browser-based artificial life simulator narrated live by Claude Fable 5.",
+  "description": "BLUFF — two Claude Fable 5 agents play heads-up no-limit hold'em while the audience reads their private thoughts in real time.",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "tune": "node tools/tune.js",
-    "headless": "node tools/headless-check.js"
+    "test": "node tools/evaluator.test.js && node tools/engine.test.js && node tools/agent.test.js",
+    "headless": "node tools/headless-match.js"
   },
   "license": "MIT"
 }

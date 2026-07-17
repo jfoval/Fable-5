@@ -3,100 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Primordial — a living world</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='16' r='8' fill='%2346e0a8'/%3E%3Ccircle cx='22' cy='11' r='4' fill='%23eac36a'/%3E%3Ccircle cx='23' cy='21' r='3' fill='%23ff6b6b'/%3E%3C/svg%3E" />
+  <title>BLUFF — heads-up, mind read live</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%A0%EF%B8%8F%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app">
-    <!-- ░░ HEADER ░░ -->
-    <header id="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <span class="cell c1"></span><span class="cell c2"></span><span class="cell c3"></span>
+  <!-- ===================== SETUP ===================== -->
+  <div id="setup" class="setup">
+    <div class="setup-card">
+      <div class="brandmark">
+        <span class="suit s-spade">♠</span>
+        <h1>BLUFF</h1>
+        <span class="suit s-heart">♥</span>
+      </div>
+      <p class="tagline">Two Claude&nbsp;Fable&nbsp;5 minds play heads-up no-limit hold'em.
+        You see both hole cards and both trains of thought. They never see each other's.</p>
+
+      <div class="pick-row">
+        <div class="pick" data-seat="0">
+          <div class="pick-label">SEAT ONE</div>
+          <div class="persona-grid" id="grid0"></div>
         </div>
-        <div class="brand-text">
-          <h1>PRIMORDIAL</h1>
-          <p>a living world · evolution in real time</p>
+        <div class="versus">vs</div>
+        <div class="pick" data-seat="1">
+          <div class="pick-label">SEAT TWO</div>
+          <div class="persona-grid" id="grid1"></div>
         </div>
       </div>
-      <div class="readouts">
-        <div class="stat"><span class="k">time</span><span class="v" id="stat-time">0:00</span></div>
-        <div class="stat"><span class="k">creatures</span><span class="v" id="stat-pop">0</span></div>
-        <div class="stat"><span class="k">generation</span><span class="v" id="stat-gen">0</span></div>
-        <div class="stat"><span class="k">fps</span><span class="v" id="stat-fps">–</span></div>
+
+      <div class="setup-actions">
+        <button id="randomize" class="btn ghost">⟲ Randomize</button>
+        <button id="start" class="btn primary">Start the match ▸</button>
+      </div>
+      <div class="setup-note" id="setupNote"></div>
+    </div>
+  </div>
+
+  <!-- ===================== BROADCAST ===================== -->
+  <div id="stage" class="stage hidden">
+    <!-- top control bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo">♠ BLUFF</span>
+        <span class="hud" id="hudHand">Hand 0</span>
+        <span class="hud" id="hudBlinds">Blinds –/–</span>
+        <span class="hud" id="hudLevel">Level 1</span>
+      </div>
+      <div class="topbar-right">
+        <button class="ctrl" id="btnPlay" title="Play / Pause (Space)">❚❚</button>
+        <div class="speed">
+          <button class="ctrl sp" data-speed="1">1×</button>
+          <button class="ctrl sp" data-speed="2">2×</button>
+          <button class="ctrl sp" data-speed="3">3×</button>
+        </div>
+        <button class="ctrl toggle" id="btnAuto" title="Auto-deal next hand">AUTO</button>
+        <button class="ctrl toggle" id="btnComm" title="Commentator ticker">📺 COMM</button>
+        <button class="ctrl" id="btnMute" title="Mute">🔊</button>
+        <button class="ctrl" id="btnAudit" title="Information-hygiene audit">🛡 AUDIT</button>
+        <button class="ctrl" id="btnReplay" title="Replay last hand">⧉ REPLAY</button>
       </div>
     </header>
 
-    <!-- ░░ LEFT: controls + charts ░░ -->
-    <aside id="left">
-      <section class="panel">
-        <h2 class="panel-title">Controls</h2>
-        <div class="transport">
-          <button id="btn-play" class="btn primary" title="Play / Pause (space)">
-            <span class="ico-pause">❚❚</span><span class="ico-play">▶</span>
-          </button>
-          <div class="speed">
-            <label for="speed">speed</label>
-            <input id="speed" type="range" min="1" max="10" step="1" value="2" />
-            <span id="speed-val" class="speed-val">2×</span>
+    <main class="broadcast">
+      <!-- left thought panel -->
+      <aside class="thought-panel" id="panel0">
+        <div class="tp-head"><span class="tp-name">—</span><span class="tp-tag"></span></div>
+        <div class="tp-read"><span class="tp-read-label">READ</span><span class="tp-read-body"></span></div>
+        <div class="tp-body"></div>
+        <div class="tp-foot"><span class="tp-source"></span></div>
+      </aside>
+
+      <!-- table -->
+      <section class="tablewrap">
+        <div class="felt" id="felt">
+          <div class="rail"></div>
+          <div class="feltface">
+            <div class="seat seat-left" id="seat0">
+              <div class="seat-pod">
+                <div class="seat-name">—</div>
+                <div class="seat-stack">10,000</div>
+                <div class="dealer-btn">D</div>
+                <div class="talk-bubble"></div>
+              </div>
+              <div class="hole" data-hole="0"></div>
+              <div class="seat-bet" data-bet="0"></div>
+            </div>
+
+            <div class="community">
+              <div class="pot" id="pot">POT <b>0</b></div>
+              <div class="board" id="board"></div>
+              <div class="street-label" id="streetLabel"></div>
+            </div>
+
+            <div class="seat seat-right" id="seat1">
+              <div class="seat-pod">
+                <div class="seat-name">—</div>
+                <div class="seat-stack">10,000</div>
+                <div class="dealer-btn">D</div>
+                <div class="talk-bubble"></div>
+              </div>
+              <div class="hole" data-hole="1"></div>
+              <div class="seat-bet" data-bet="1"></div>
+            </div>
           </div>
         </div>
-        <div class="god">
-          <div class="god-label">God mode</div>
-          <div class="god-buttons">
-            <button id="btn-meteor" class="btn god meteor" title="Kill ~70% of all life">☄ Meteor</button>
-            <button id="btn-famine" class="btn god famine" title="Halve the food supply">✷ Famine</button>
-            <button id="btn-abundance" class="btn god abundance" title="Double the food supply">✿ Abundance</button>
-          </div>
-          <button id="btn-reset" class="btn ghost" title="Reseed a fresh world">↻ New world</button>
+
+        <!-- stats strip -->
+        <div class="stats-strip">
+          <div class="statbox" id="stat0"></div>
+          <div class="commentary" id="commentary"><span class="live-dot"></span><span class="comm-text">The booth is quiet… deal a hand.</span></div>
+          <div class="statbox" id="stat1"></div>
         </div>
       </section>
 
-      <section class="panel">
-        <h2 class="panel-title">Population by species</h2>
-        <canvas id="chart-pop" class="chart"></canvas>
-        <div class="legend">
-          <span><i class="dot grazer"></i>grazers</span>
-          <span><i class="dot omnivore"></i>omnivores</span>
-          <span><i class="dot hunter"></i>hunters</span>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2 class="panel-title">Average traits over generations</h2>
-        <canvas id="chart-traits" class="chart"></canvas>
-        <div class="legend small" id="trait-legend"></div>
-      </section>
-    </aside>
-
-    <!-- ░░ CENTER: the world ░░ -->
-    <main id="stage">
-      <canvas id="world"></canvas>
-      <div id="toasts"></div>
-      <div id="banner" class="banner hidden"></div>
+      <!-- right thought panel -->
+      <aside class="thought-panel" id="panel1">
+        <div class="tp-head"><span class="tp-name">—</span><span class="tp-tag"></span></div>
+        <div class="tp-read"><span class="tp-read-label">READ</span><span class="tp-read-body"></span></div>
+        <div class="tp-body"></div>
+        <div class="tp-foot"><span class="tp-source"></span></div>
+      </aside>
     </main>
 
-    <!-- ░░ RIGHT: field notes + inspector ░░ -->
-    <aside id="right">
-      <section class="panel notes-panel">
-        <h2 class="panel-title">
-          Field Notes
-          <span id="narrator-badge" class="badge">connecting…</span>
-        </h2>
-        <div id="field-notes" class="field-notes"></div>
-      </section>
-
-      <section class="panel inspector-panel">
-        <h2 class="panel-title">Specimen</h2>
-        <div id="inspector" class="inspector empty">
-          <p class="hint">Click any creature to read its genome and lineage.</p>
-        </div>
-      </section>
-    </aside>
+    <!-- overlays -->
+    <div class="verdict-banner" id="verdict"><div class="vb-inner"></div></div>
+    <div class="allin-overlay" id="allin"><div class="allin-text">ALL&nbsp;IN</div><div class="allin-sub">the table holds its breath</div></div>
+    <div class="deal-hint" id="dealHint">▸ press <b>N</b> for the next hand</div>
   </div>
 
-  <script type="module" src="./src/main.js"></script>
+  <!-- modals -->
+  <div class="modal hidden" id="auditModal"><div class="modal-body" id="auditBody"></div></div>
+  <div class="modal hidden" id="replayModal"><div class="modal-body" id="replayBody"></div></div>
+  <div class="modal hidden" id="endModal"><div class="modal-body" id="endBody"></div></div>
+
+  <audio id="heartbeat" loop preload="auto"></audio>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
